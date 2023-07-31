@@ -1,9 +1,13 @@
+import requests
+import datetime
+import time
+import json
 from pybit.unified_trading import HTTP
 from config import ByBitBotConfig
 
 order_size = ByBitBotConfig.order_size
-api_key = ByBitBotConfig.apiKey
-secret_key = ByBitBotConfig.secretKey
+api_key = ByBitBotConfig.api_key
+secret_key = ByBitBotConfig.api_secret
 bar_num = ByBitBotConfig.bar_num
 period = ByBitBotConfig.period
 threshold_range = ByBitBotConfig.threshold_range
@@ -39,18 +43,40 @@ class ByBitBot:
             api_key = api_key,
             api_secret = api_secret,
         )
+        self.server_minute = 0
+        self.server_second = 0
         self.order_size = order_size
         self.bar_num = bar_num
         self.period = period
         self.threshold_range = threshold_range
+        print(self.server_minute, self.server_second)
 
-    def check_position():
+    def get_bybit_server_time(self):
+        """
+        Bybitのサーバータイムを取得する
+
+        Returns
+        -------
+        dt.minute : int
+            Bybitサーバタイムの現在分
+        dt.second : int
+            Bybitサーバタイムの現在秒
+        """
+        url = 'https://api.bybit.com'
+        endpoint = '/v5/market/time'
+        res = requests.get(url + endpoint)
+        res_dict = json.loads(res.text)
+        bybit_unixtime = res_dict["result"]["timeSecond"]
+        dt = datetime.datetime.fromtimestamp(int(bybit_unixtime))
+        return dt.minute, dt.second
+
+    def check_position(self):
         """
         現在の保有ポジションを確認する
         """
         pass
 
-    def calculate_sma(period: int):
+    def calculate_sma(self, period: int):
         """
         パラメータ値の単純移動平均線を算出する
 
@@ -66,7 +92,7 @@ class ByBitBot:
         """
         pass
 
-    def buy_sell_decision(previous_close_price: int, buy_threshold: float, sell_threshold: float):
+    def buy_sell_decision(self, previous_close_price: int, buy_threshold: float, sell_threshold: float):
         """
         PAXG/GOLDが単純移動平均線を基準とした閾値を超えた際に売買をおこなう
 
@@ -92,11 +118,18 @@ class ByBitBot:
         """
         pass
 
-    def start_bot():
+    def start_bot(self):
+        self.server_minute, self.server_second = self.get_bybit_server_time()
         while True:
-            pass
             # Bybitサーバータイムを取得して1分経過したことを確認
-            # if
+            new_minute, new_second = self.get_bybit_server_time()
+            if self.server_minute == new_minute:
+                sleep_second = max(1, 60 - new_second)
+                time.sleep(sleep_second)
+                continue
+
+            # サーバータイムの分と秒を更新
+            self.server_minute = new_minute
     
             # ccxtで○分足を取得する
             
