@@ -5,10 +5,11 @@ import json
 from pybit.unified_trading import HTTP
 from config import ByBitBotConfig
 
+symbol = ByBitBotConfig.symbol
 order_size = ByBitBotConfig.order_size
 api_key = ByBitBotConfig.api_key
 secret_key = ByBitBotConfig.api_secret
-bar_num = ByBitBotConfig.bar_num
+interval = ByBitBotConfig.interval
 period = ByBitBotConfig.period
 threshold_range = ByBitBotConfig.threshold_range
 
@@ -16,21 +17,44 @@ class ByBitBot:
     """
     ByBitボットのクラス。注文処理をおこなう。
     毎分単純移動平均線を更新し、売買シグナルが発生するかを確認する。
+
+    Attributes
+    ----------
+    symbol : str
+        暗号通貨のシンボル名
+    server_minute : int
+        Bybitサーバーの現在分
+    server_second : int
+        Bybitサーバーの現在秒
+    order_size : int
+        発注サイズ(USDT)
+    api_key : str
+        BybitのAPIキー
+    api_secret : str
+        BybitのAPIシークレットキー
+    interval : int
+        処理対象となるbar(足)の期間
+    period : int
+        移動平均線で利用するbar(足)の数
+    threshold_range : float
+        Long/Shortの判断となる閾値の係数
     """
 
-    def __init__(self, order_size: int, api_key: str, api_secret: str, bar_num: int, period: int, threshold_range: float):
+    def __init__(self, symbol: str, order_size: int, api_key: str, api_secret: str, interval: int, period: int, threshold_range: float):
         """
         ByBitクラスの初期化処理
 
         Parameters
         ----------
+        symbol : str
+            暗号通貨のシンボル名
         order_size : int
             発注サイズ(USDT)
         api_key : str
             BybitのAPIキー
         api_secret : str
             BybitのAPIシークレットキー
-        bar_num : int
+        interval : int
             処理対象となるbar(足)の期間
         period : int
             移動平均線で利用するbar(足)の数
@@ -38,18 +62,18 @@ class ByBitBot:
             Long/Shortの判断となる閾値の係数
         """
         # HTTPセッションの初期化
-        session = HTTP(
+        self.session = HTTP(
             testnet = False,
             api_key = api_key,
             api_secret = api_secret,
         )
         self.server_minute = 0
         self.server_second = 0
+        self.symbol = symbol
         self.order_size = order_size
-        self.bar_num = bar_num
+        self.interval = interval
         self.period = period
         self.threshold_range = threshold_range
-        print(self.server_minute, self.server_second)
 
     def get_bybit_server_time(self):
         """
@@ -69,6 +93,32 @@ class ByBitBot:
         bybit_unixtime = res_dict["result"]["timeSecond"]
         dt = datetime.datetime.fromtimestamp(int(bybit_unixtime))
         return dt.minute, dt.second
+
+    def get_bybit_kline(self, start_time: int, end_time: int):
+        """
+        引数で渡された期間のヒストリカルデータを取得する
+
+        Parameters
+        ----------
+        start_time : int
+            ヒストリカルデータを取得する開始期間
+        end_time : int
+            ヒストリカルデータを取得する終了期間
+        
+        Returns
+        historical_data : list
+            指定期間のヒストリカルデータ
+        """
+        historical_data = self.session.get_kline(
+            category="linear",
+            symbol=self.symbol,
+            interval=self.interval,
+            start=start_time,
+            end=end_time,
+            limit=self.interval*self.period
+        )
+        return historical_data["result"]["list"]
+        
 
     def check_position(self):
         """
@@ -131,7 +181,13 @@ class ByBitBot:
             # サーバータイムの分と秒を更新
             self.server_minute = new_minute
     
-            # ccxtで○分足を取得する
+            # SMA期間のohlcを取得する
+            temp_end_time = datetime.datetime.now()
+            temp_start_time = temp_end_time + datetime.timedelta(minutes=-(self.interval*self.period))
+            start_time = int(str(int(temp_start_time.timestamp())) + '000')
+            end_time = int(str(int(temp_end_time.timestamp())) + '000')
+            
+            historical_data = self.get_bybit_kline(start_time, end_time)
             
             # 移動平均線を計算する
             #calculate_sma(self.period)
@@ -157,5 +213,5 @@ class ByBitBot:
 
 
 if __name__ == '__main__':
-    system = ByBitBot(order_size, api_key, secret_key, bar_num, period, threshold_range)
+    system = ByBitBot(symbol, order_size, api_key, secret_key, interval, period, threshold_range)
     system.start_bot()
