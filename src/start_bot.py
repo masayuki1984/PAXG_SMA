@@ -2,6 +2,7 @@ import requests
 import datetime
 import time
 import json
+import pandas as pd
 from pybit.unified_trading import HTTP
 from config import ByBitBotConfig
 
@@ -119,26 +120,26 @@ class ByBitBot:
         )
         return historical_data["result"]["list"]
         
-
-    def check_position(self):
-        """
-        現在の保有ポジションを確認する
-        """
-        pass
-
-    def calculate_sma(self, period: int):
+    def calculate_sma(self, close_series: pd.DataFram):
         """
         パラメータ値の単純移動平均線を算出する
 
         Parameters
         ----------
-        period : int
-            単純移動平均線の期間
+        close_series : pd.DataFram
+            period期間の終値
 
         Returns
         -------
+        sma_value : float
+            period期間終値の単純移動平均値
+        """
+        sma_value = close_series.astype(int).mean()
+        return sma_value
 
-
+    def check_position(self):
+        """
+        現在の保有ポジションを確認する
         """
         pass
 
@@ -190,18 +191,26 @@ class ByBitBot:
             historical_data = self.get_bybit_kline(start_time, end_time)
             
             # 移動平均線を計算する
-            #calculate_sma(self.period)
+            sma_value = self.calculate_sma(historical_data[4])
     
             # 売買判断をおこなう
-            #previous_close_price = ○分足の直前の終値
-            #buy_threshold = 移動平均線の直近の値 * self.threshold_range
-            #sell_threshold = 移動平均線の直近の値 * self.threshold_range
+            previous_close_price = historical_data[4][0]
+            buy_threshold = sma_value * (1 - self.threshold_range)
+            sell_threshold = sma_value * (1 + self.threshold_range)
             #buy_sell_direction = buy_sell_decision(previous_close_price, buy_threshold、sell_threshold)
             
             # 売買を行う場合の処理
             #if buy_sell_direction != 0:
                 # 現在の保有ポジションを確認する
                 #quantity_held = check_position()
+                # Long エントリー
+                #if buy_sell_direction == 1 and not quantity_held > 0:
+                    # Shortポジションを持っている場合は手仕舞う
+                    #if 
+                #longCondition and not (strategy.position_size > 0)
+
+
+                
                 
                 # 保有ポジションがある場合にはポジションを手仕舞う
                 #[保有ポジションを閉じる処理]
