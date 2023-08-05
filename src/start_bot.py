@@ -137,12 +137,6 @@ class ByBitBot:
         sma_value = close_series.astype(int).mean()
         return sma_value
 
-    def check_position(self):
-        """
-        現在の保有ポジションを確認する
-        """
-        pass
-
     def buy_sell_decision(self, previous_close_price: int, buy_threshold: float, sell_threshold: float):
         """
         PAXG/GOLDが単純移動平均線を基準とした閾値を超えた際に売買をおこなう
@@ -160,6 +154,19 @@ class ByBitBot:
         -------
         amount : int
             Long判断:1, Short判断:-1, Other:0
+        """
+        if previous_close_price < buy_threshold:
+            amount = 1
+        elif previous_close_price > sell_threshold:
+            amount = -1
+        else:
+            amount = 0
+
+        return amount
+
+    def check_position(self):
+        """
+        現在の保有ポジションを確認する
         """
         pass
 
@@ -197,28 +204,27 @@ class ByBitBot:
             previous_close_price = historical_data[4][0]
             buy_threshold = sma_value * (1 - self.threshold_range)
             sell_threshold = sma_value * (1 + self.threshold_range)
-            #buy_sell_direction = buy_sell_decision(previous_close_price, buy_threshold、sell_threshold)
+            buy_sell_direction = self.buy_sell_decision(previous_close_price, buy_threshold, sell_threshold)
             
             # 売買を行う場合の処理
-            #if buy_sell_direction != 0:
+            if buy_sell_direction != 0:
                 # 現在の保有ポジションを確認する
-                #quantity_held = check_position()
+                quantity_held = self.check_position()
+                order_quantity = self.order_size * buy_sell_direction
                 # Long エントリー
-                #if buy_sell_direction == 1 and not quantity_held > 0:
+                if buy_sell_direction == 1 and not quantity_held > 0:
                     # Shortポジションを持っている場合は手仕舞う
-                    #if 
-                #longCondition and not (strategy.position_size > 0)
-
-
-                
-                
-                # 保有ポジションがある場合にはポジションを手仕舞う
-                #[保有ポジションを閉じる処理]
-
-                # 成行注文をおこなう
-                #order_quantity = self.order_size * buy_sell_direction
-                #order(order_quantity)
-    
+                    if quantity_held < 0:
+                        pass
+                    # Long 注文
+                    #self.order(order_quantity)
+                # Short エントリー
+                if buy_sell_direction == -1 and not quantity_held < 0:
+                    # Longポジションを持っている場合は手仕舞う
+                    if quantity_held > 0:
+                        pass
+                    # Short 注文
+                    #self.order(order_quantity)
 
 
 if __name__ == '__main__':
